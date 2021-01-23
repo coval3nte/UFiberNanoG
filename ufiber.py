@@ -86,13 +86,13 @@ local_crc32_table = [
 ]
 
 
-def get_mtdblock3():
+def get_mtdblock3(ip):
     '''Get mtdblock3 using SSH'''
     ssh = SSHClient()
     ssh.set_missing_host_key_policy(AutoAddPolicy())
 
     try:
-        ssh.connect('192.168.1.1', 22, 'ubnt',
+        ssh.connect(ip, 22, 'ubnt',
                     getpass(prompt="SSH PASSWORD: "))
     except TimeoutError:
         print("[%sERROR%s] UFiber NANO G Unreachable" % (RED, RESET))
@@ -257,7 +257,7 @@ def nvram_upgrade(mtdblock3, serial_number, mac_addr):
     return mtdblock3_new
 
 
-def hack(serial, mac_addr, file_mode):
+def hack(serial, mac_addr, file_mode, ip):
     '''Main Function'''
     if file_mode and not exists('mtdblock3.bin'):
         print('[%sERROR%s] File not found' % (RED, RESET))
@@ -266,7 +266,7 @@ def hack(serial, mac_addr, file_mode):
         with open('mtdblock3.bin', 'rb') as file_stream:
             mtdblock3 = file_stream.read()
     else:
-        ssh, mtdblock3 = get_mtdblock3()
+        ssh, mtdblock3 = get_mtdblock3(ip)
 
     hashsum = sha256()
     hashsum.update(mtdblock3)
@@ -345,13 +345,16 @@ if __name__ == '__main__':
                         default=None, required=True, help="Serial Number")
     parser.add_argument('-m', '--mac', dest='mac', type=str,
                         default=None, help="Mac Address")
+    parser.add_argument('-i', '--ip', dest='ip', type=str,
+                        default="192.168.1.1", help="IP Address")
+
     parser.add_argument('-f', '--file', action="store_true", help="File Mode")
     parser.add_argument('-dwonly', '--download-only', action="store_true",
                         help="mtdblock3 Download")
     args = parser.parse_args()
 
     if args.download_only:
-        _, mtd = get_mtdblock3()
+        _, mtd = get_mtdblock3(args.ip)
         print("[%sINFO%s] File Size: %s bytes" % (
             GREEN, RESET, len(mtd)))
         with open('mtdblock3.bin', 'wb') as mtd_stream:
@@ -359,4 +362,4 @@ if __name__ == '__main__':
             sexit(0)
 
     if args.serial or args.mac:
-        hack(args.serial, args.mac, args.file)
+        hack(args.serial, args.mac, args.file, args.ip)
